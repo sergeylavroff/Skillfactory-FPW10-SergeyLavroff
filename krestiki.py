@@ -17,16 +17,21 @@ print_field(game)
 
 
 def put_sign(name, sign):
+    appropriate = [1, 2, 3]
     if name == name1:
         coord = input(f'Игрок {name} введите координаты куда поставим крестик:')
     else:
         coord = input(f'Игрок {name} введите координаты куда поставим нолик:')
-    if game[int(coord[0])][int(coord[1])] == '-':
-        game[int(coord[0])][int(coord[1])] = sign
+    if len(coord) == 2 and int(coord[0]) in appropriate and int(coord[1]) in appropriate:
+        if game[int(coord[0])][int(coord[1])] == '-':
+            game[int(coord[0])][int(coord[1])] = sign
+            print_field()
+        else:
+            print('Здесь уже есть что то, зачем Вы так?')
+            put_sign(name, sign)
     else:
-        print('Здесь уже есть что то, зачем Вы так?')
+        print("Формат введенных координат не соответствует игровому полю, попробуйте снова!")
         put_sign(name, sign)
-    print_field()
 
 
 def winner(game=game):
@@ -66,6 +71,9 @@ def main():
         put_sign(name1, 'x')
         if winner(game):
             print("Победитель", winner(game))
+            break
+        if round == 5:
+            print("Ничья!")
             break
         put_sign(name2, 'o')
         if winner(game):
