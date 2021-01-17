@@ -1,4 +1,4 @@
-from rect_class import Rectangle, Square, Circle
+from rect_class import Rectangle, Square, Circle, PosRectangle
 
 rect_1 = Rectangle(4,10)
 rect_2 = Rectangle(7,5)
@@ -23,3 +23,7 @@ for i in figures:
     else:
         print(i.getArea())
 
+prect = PosRectangle(3, 6, 20, 30)
+
+print(prect.getPosition())
+print(str(prect))

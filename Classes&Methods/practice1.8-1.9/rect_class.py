@@ -21,3 +21,14 @@ class Circle:
         self.radius = radius
     def getArea(self):
         return pi * self.radius ** 2
+
+class PosRectangle(Rectangle):
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    def getPosition(self):
+        return self.x , self.y
+    def __str__(self):
+        return str(f' Rectangle ({self.x}, {self.y}, {self.width}, {self.height})')
