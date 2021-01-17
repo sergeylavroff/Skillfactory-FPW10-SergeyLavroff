@@ -1,4 +1,5 @@
 from CatClass import Cat
 
-baron = Cat(Baron, male, 2)
-sam = Cat(Sam, male, 2)
+baron = Cat('Барон', 'Мальчик', 2)
+sam = Cat('Сэм', 'Мальчик', 2)
+
