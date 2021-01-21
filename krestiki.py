@@ -53,9 +53,9 @@ def winner(game=game):
         elif game[1, 1] == 'o':
             return name2
     if len(set(fliplr(game[1:, 1:]).diagonal())) == 1:
-        if game[3, 3] == 'x' and game[2, 2] == 'x':
+        if game[3, 1] == 'x' and game[2, 2] == 'x':
             return name1
-        elif game[3, 3] == 'o' and game[2, 2] == 'o':
+        elif game[3, 1] == 'o' and game[2, 2] == 'o':
             return name2
 
 
