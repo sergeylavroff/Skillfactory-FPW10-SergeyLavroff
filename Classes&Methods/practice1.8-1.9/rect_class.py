@@ -13,8 +13,18 @@ class Rectangle:
 class Square:
     def __init__(self, side):
         self.side = side
+    @property
     def getAreaSq(self):
         return self.side ** 2
+    @property
+    def setSide(self):
+        return self.side
+    @setSide.setter
+    def setSide(self, side):
+        if side > 0:
+            self.side = side
+        else:
+            raise ValueError("Значение должно быть положительным!")
 
 class Circle:
     def __init__(self, radius):
@@ -32,3 +42,12 @@ class PosRectangle(Rectangle):
         return self.x , self.y
     def __str__(self):
         return str(f' Rectangle ({self.x}, {self.y}, {self.width}, {self.height})')
+
+class SquareFactory:
+    @staticmethod
+    def makeSquare(side):
+        return Square(side)
+
+sq1 = SquareFactory.makeSquare(4)
+sq1.setSide = 8
+print(sq1.getAreaSq)
