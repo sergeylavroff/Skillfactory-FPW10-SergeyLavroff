@@ -1,4 +1,5 @@
 from numpy import array
+from random import randint
 from icecream import ic
 class BoardException(Exception):
     pass
@@ -22,9 +23,8 @@ class Dot:
         self.y = y
         self._status = 1
         self.occupied = 0
-    @property
     def coord(self):
-        return [self.x, self.y]
+        return (self.x, self.y)
     @property
     def status(self):
         return self._status
@@ -33,6 +33,8 @@ class Dot:
             raise BoardUsedException()
         else:
             self._status = 0
+    def occupy(self):
+        self.occupied = 1
     @property
     def occ_state(self):
         return self.occupied
@@ -45,19 +47,22 @@ class Dot:
         return '~' if self._status == 1 else '.'
 
 class Deck(Dot):
-    def __init__(self, x, y, name, visible):
+    def __init__(self, x, y, shipname, visible):
         self.x = x
         self.y = y
-        self.name = name
+        self.shipname = shipname
         self._status = 1
         self.occupied = 1
         self.visible = visible
+    def coord(self):
+        return (self.x, self.y)
     def shot(self, field):
         if self._status == 0:
             raise BoardUsedException()
         else:
             self._status = 0
-            field.checkship(self.name)
+            self.visible = 1
+            field.checkship(self.shipname)
 
     def print(self):
         if self.visible == 1:
@@ -67,84 +72,138 @@ class Deck(Dot):
 
 
 class Ship:
-    def __init__(self, x, y, orient, type, name, field, visible):
+    def __init__(self, x, y, orient, size, field, visible):
         self.x = x
         self.y = y
         self.orient = orient
-        self.type = type
-        self.name = name
+        self.size = size
         self.field = field
         if orient == 1:
-            for l in range(TYPEDICT.get(type)):
-                field.setdot(y-1,x+l-1,Deck(x,y,self, visible), self)
+            #TODO Нужно написать скрипт проверки занятости по всем точкам, в которые поставим корабль!
+            for l in range(size):
+                field.setdot(x,y+l,Deck(x,y+l,self, visible), self)
         else:
-            for l in range(TYPEDICT.get(type)):
-                field.setdot(y+l-1,x-1,Deck(x,y,self, visible), self)
-    def name(self):
-        return self.name
+            for l in range(size):
+                field.setdot(x+l,y,Deck(x+l,y,self, visible), self)
+        for b in [j.coord() for j in self.field.shipdict.get(self)]:
+            i,j = b
+            round = [(1,0),(-1,0),(1,1),(0,1),(0,-1),(-1,1),(-1,-1),(1,-1)]
+            for di,dj in round:
+                try:
+                    self.field.occupy(i+di, j+dj)
+                except (BoardUsedException, IndexError) as e:
+                    continue
     def contour(self):
-        pass
+        for b in [j.coord() for j in self.field.shipdict.get(self)]:
+            i,j = b
+            round = [(1,0),(-1,0),(1,1),(0,1),(0,-1),(-1,1),(-1,-1),(1,-1)]
+            for di,dj in round:
+                try:
+                    self.field.shoot(i+di, j+dj)
+                except (BoardUsedException, IndexError) as e:
+                    continue
+
 
 
 # Создание корабля помещает его имя в дочернние точки и словарь кораблей в игровом поле. При попадании в точку метод запускает проверку остатка живых точек в корабле.
-# Если точки в корабле остались кричим, что ранили. Если нет, убили, и запскаем процесс оконтуривания с включением видимости.
+# Если точки в корабле остались кричим, что ранили. Если нет, убили, и запскаем процесс оконтуривания.
 
 class Field:
-    def __init__(self, l1, l2):
-        self.sea = array([[Dot(i, j) for i in range(l1)] for j in range(l2)])
+    def __init__(self, boardsize):
+        self.sea = array([[Dot(i, j) for i in range(boardsize)] for j in range(boardsize)])
         self.shipdict = dict()
+        self.kills = 0
     @property
     def lookup(self):
         return self.sea
+    def display(self):
+        print('       1   2   3   4   5   6')
+        print('----------------------------')
+        for i in range(6):
+            print(i + 1, ' | ', *[f' {x.print()} ' for x in self.lookup[i]])
     def shoot(self, x, y):
-        self.sea[y-1,x-1].shot(self)
-    def checkship(self, name):
-        print(self.shipdict.get(name))
-        _ = [i.status for i in self.shipdict.get(name)]
-        print(_)
+        self.sea[x, y].shot(self)
+    def occupy(self, x, y):
+        self.sea[x, y].occupy()
+    def shipdict(self):
+        return self.shipdict()
+    @property
+    def killcount(self):
+        return self.kills
+    def checkship(self, shipname):
+        _ = [i.status for i in self.shipdict.get(shipname)]
         if 1 in _:
             print('Корабль ранен!')
         else:
-            print(f'Вы уничтожили {name.name}!')
-            name.contour()
-    def setdot(self, y, x, obj, shipname):
-        if self.sea[y,x].occ_state == 1:
+            print(f'Вы уничтожили корабль!')
+            self.kills += 1
+            shipname.contour()
+    def setdot(self, x, y, obj, shipname):
+        if self.sea[x,y].occ_state == 1:
             raise WrongShipSetting()
         else:
-            self.sea[y, x] = obj
+            self.sea[x, y] = obj
             if self.shipdict.get(shipname):
                 self.shipdict[shipname].append(obj)
             else:
                 d1 = {shipname:[obj]}
                 self.shipdict.update(d1)
 
-            # for i in range(y-1, y+2):
-            #     for j in range(x-1, x+2):
-            #         self.sea[i, j].set_occ()
+class Game():
+    def __init__(self, boardsize = 6):
+        self.boardsize = boardsize
+        humanboard = self.r_field()
+        benderboard = self.r_field(0)
 
 
+        self.bender = AI(benderboard, humanboard)
+        self.human = User(humanboard, benderboard)
 
+    def r_field(self, visible = 1):
+        shipsizes = [ 3, 2, 2, 1, 1, 1, 1]
+        field = Field(self.boardsize)
+        for i in shipsizes:
+            while True:
+                try:
+                    ship = Ship(randint(0, self.boardsize), randint(0, self.boardsize), randint(1, 2), i, field, visible)
+                    break
+                except (BoardUsedException, IndexError, WrongShipSetting) as e:
+                    pass
+        return field
+    def firstsight(self):
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('~~        Добро пожаловать в игру        ~~')
+        print('~~~~~~~~~~~~    Морской Бой!   ~~~~~~~~~~~~')
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
-TYPEDICT = { "battleship": 3, "destroyer": 2, "gunboat": 1 }
-f1 = Field(6,6)
-#print(*[f' {x.print()} ' for x in f1.sea[1]])
+    def main(self):
+        turn = 0
+        while True:
+            print('~'*20)
+            print("               Доска игрока ")
+            print(self.humanboard.display())
+            print("               Доска адмирала Бендера ")
+            print(self.benderboard.display())
+            if turn % 2 == 0:
+                print(' Ход игрока:')
+                self.human.move()
+            else:
+                print(' Ход Адмирала Бендера:')
+                self.bender.move()
+            if self.humanboard.killcont == 7:
+                print('~'*20)
+                print(' Человек одолел! ')
+                break
+            elif self.benderboard.killcount == 7:
+                print('~' * 20)
+                print(' Адмирал убил всех человеков! ')
+                break
+            turn += 1
+    def start(self):
+        self.firstsight()
+        self.main()
 
-def main():
-    print('Игра Морской Бой!')
-    #Вывод поля
-    print('       1   2   3   4   5   6')
-    print('----------------------------')
-    for i in range(6):
-        print(i+1, ' | ', *[f' {x.print()} ' for x in f1.lookup[i]])
-
-#f1.shoot(3,2)
-main()
-s1 = Ship(3, 3, 2, 'battleship', 'Linkor1', f1, 1)
-main()
-print(f1.shipdict)
-f1.shoot(3,3)
-f1.shoot(3,5)
-
-main()
-#Нужно сделать оконтуривания статусом occupied по словарю корабля!
-# Нужно не забыть про видимость!
+g = Game()
+g.start()
