@@ -79,10 +79,19 @@ class Ship:
         self.size = size
         self.field = field
         if orient == 1:
-            #TODO Нужно написать скрипт проверки занятости по всем точкам, в которые поставим корабль!
+            for l in range(size):
+                if y+l > 6:
+                    raise WrongShipSetting
+                if field.check_occ(x, y + l) == 1:
+                    raise WrongShipSetting
             for l in range(size):
                 field.setdot(x,y+l,Deck(x,y+l,self, visible), self)
         else:
+            for l in range(size):
+                if x+l > 6:
+                    raise WrongShipSetting
+                if field.check_occ(x + l, y) == 1:
+                    raise WrongShipSetting
             for l in range(size):
                 field.setdot(x+l,y,Deck(x+l,y,self, visible), self)
         for b in [j.coord() for j in self.field.shipdict.get(self)]:
@@ -116,6 +125,8 @@ class Field:
     @property
     def lookup(self):
         return self.sea
+    def check_occ(self, x, y):
+        return self.sea[x, y].occ_state
     def display(self):
         print('       1   2   3   4   5   6')
         print('----------------------------')
@@ -149,27 +160,79 @@ class Field:
                 d1 = {shipname:[obj]}
                 self.shipdict.update(d1)
 
+class Player:
+    def __init__(self, myfield, oppfield, boardsize = 6):
+        self.myfield = myfield
+        self.oppfield = oppfield
+        self.boardsize = boardsize
+
+class Bender(Player):
+    def move(self):
+        x = 0
+        y = 0
+        while True:
+            try:
+                x = randint(0,self.boardsize-1)
+                y = randint(0, self.boardsize-1)
+                self.oppfield.shoot(x, y)
+                print(f" Армада Адмирала Бендера ударила по точке {y + 1},{x + 1}!")
+                break
+            except BoardUsedException:
+                continue
+
+class Human(Player):
+    def move(self):
+        print(" Господин Адмирал! Вам нужно указать точку удара!")
+        while True:
+            y = input(" Введите номер столбца:")
+            x = input(" Введите номер строки:")
+            if not(y.isdigit()) or not(x.isdigit()):
+                print("Адмирал, это даже не числа, наш флот под обстрелом, соберитесь!")
+                continue
+            y = int(y)
+            x = int(x)
+            if not(y in range(1, self.boardsize + 1)) or not(x in range(1, self.boardsize + 1)):
+                print(f"Адмирал, враг сосредоточен в точках от 0 до {self.boardsize}!) ")
+                continue
+            try:
+                self.oppfield.shoot(x-1, y-1)
+                break
+            except BoardUsedException:
+                print(BoardUsedException)
+                continue
+
 class Game():
     def __init__(self, boardsize = 6):
         self.boardsize = boardsize
-        humanboard = self.r_field()
-        benderboard = self.r_field(0)
+        self.humanboard = self.get_field()
+        self.benderboard = self.get_field(0)
 
 
-        self.bender = AI(benderboard, humanboard)
-        self.human = User(humanboard, benderboard)
+        self.bender = Bender(self.benderboard, self.humanboard)
+        self.human = Human(self.humanboard, self.benderboard)
 
-    def r_field(self, visible = 1):
-        shipsizes = [ 3, 2, 2, 1, 1, 1, 1]
+    def get_field(self, visible = 1):
+        field = None
+        while field is None:
+            field = self.r_field(visible)
+        return field
+
+    def r_field(self, visible=1):
+        shipsizes = [3, 2, 2, 1, 1, 1, 1]
         field = Field(self.boardsize)
+        counter = 0
         for i in shipsizes:
             while True:
+                if counter > 1000:
+                    return None
                 try:
                     ship = Ship(randint(0, self.boardsize), randint(0, self.boardsize), randint(1, 2), i, field, visible)
                     break
                 except (BoardUsedException, IndexError, WrongShipSetting) as e:
+                    counter += 1
                     pass
         return field
+
     def firstsight(self):
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -192,13 +255,13 @@ class Game():
             else:
                 print(' Ход Адмирала Бендера:')
                 self.bender.move()
-            if self.humanboard.killcont == 7:
+            if self.benderboard.killcount == 7:
                 print('~'*20)
                 print(' Человек одолел! ')
                 break
-            elif self.benderboard.killcount == 7:
+            elif self.humanboard.killcount == 7:
                 print('~' * 20)
-                print(' Адмирал убил всех человеков! ')
+                print(' Адмирал Бендер убил всех человеков! ')
                 break
             turn += 1
     def start(self):
