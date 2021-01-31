@@ -4,11 +4,11 @@ class BoardException(Exception):
     pass
 
 class BoardOutException(BoardException):
-    def __str__(self):
+    def __repr__(self):
         return "Выстрел за пределы доски!"
 
 class BoardUsedException(BoardException):
-    def __str__(self):
+    def __repr__(self):
         return "Точка уже поражена!"
 
 class WrongShipSetting(BoardException):
@@ -112,8 +112,10 @@ class Ship:
             round = [(1,0),(-1,0),(1,1),(0,1),(0,-1),(-1,1),(-1,-1),(1,-1)]
             for di,dj in round:
                 try:
+                    if 0 > (i + di) or (i + di) >= self.field.boardsize or 0 > (j + dj) or (j + dj) >= self.field.boardsize:
+                        raise BoardUsedException
                     self.field.shoot(i+di, j+dj)
-                except (BoardUsedException, IndexError) as e:
+                except BoardUsedException:
                     continue
 
 
@@ -126,16 +128,15 @@ class Field:
         self.sea = array([[Dot(i, j) for i in range(boardsize)] for j in range(boardsize)])
         self.shipdict = dict()
         self.kills = 0
+        self.boardsize = boardsize
     @property
     def lookup(self):
         return self.sea
     def check_occ(self, x, y):
         return self.sea[x, y].occ_state
-    def display(self):
-        print('       1   2   3   4   5   6')
-        print('----------------------------')
-        for i in range(6):
-            print(i + 1, ' | ', *[f' {x.print()} ' for x in self.lookup[i]])
+    def display(self, i):
+        a = (str(i + 1), ' | ', *[f' {x.print()} ' for x in self.lookup[i]])
+        return ''.join(a)
     def shoot(self, x, y):
         self.sea[x, y].shot(self)
     def occupy(self, x, y):
@@ -201,7 +202,7 @@ class Human(Player):
                 self.oppfield.shoot(x-1, y-1)
                 break
             except BoardUsedException:
-                print(BoardUsedException)
+                print("Эта точка уже поражена!")
                 continue
 
 class Game():
@@ -235,21 +236,23 @@ class Game():
         return field
 
     def firstsight(self):
-        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('~~        Добро пожаловать в игру        ~~')
-        print('~~~~~~~~~~~~    Морской Бой!   ~~~~~~~~~~~~')
-        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-        print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('           ~~        Добро пожаловать в игру        ~~')
+        print('           ~~~~~~~~~~~~    Морской Бой!   ~~~~~~~~~~~~')
+        print('           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+        print('           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
+    def simultaneous_disp(self):
+        print(f"      Доска игрока     {'~~~' * self.boardsize}    Доска Адмирала Бендера")
+        print(f"     {'| '.join([str(i+1) for i in range(self.boardsize)])}                       "*2)
+        print('___________'*self.boardsize)
+        for i in range(self.boardsize):
+            print(f"{self.humanboard.display(i)}  {'~~~' * self.boardsize}  {self.benderboard.display(i)}")
     def main(self):
         turn = 0
         while True:
-            print('~'*20)
-            print("Доска игрока")
-            print(self.humanboard.display())
-            print("Доска Адмирала Бендера")
-            print(self.benderboard.display())
+            self.simultaneous_disp()
             if turn % 2 == 0:
                 print(' Ход игрока:')
                 self.human.move()
@@ -258,7 +261,7 @@ class Game():
                 self.bender.move()
             if self.benderboard.killcount == 7:
                 print('~'*20)
-                print(' Человек одолел! ')
+                print(' Суда подконтрольные сумасшедшему ИИ уничтожены, Адмирал! ')
                 break
             elif self.humanboard.killcount == 7:
                 print('~' * 20)
