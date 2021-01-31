@@ -1,6 +1,5 @@
 from numpy import array
 from random import randint
-from icecream import ic
 class BoardException(Exception):
     pass
 
@@ -15,7 +14,7 @@ class BoardUsedException(BoardException):
 class WrongShipSetting(BoardException):
     def __str__(self):
         return "Корабль не может быть размещен в заданной точке!"
-
+# Класс точка, базовый класс.
 class Dot:
      #Возможые состояния status 1 (спокойная вода) и 0 (после попадания)
     def __init__(self, x, y):
@@ -46,6 +45,8 @@ class Dot:
     def print(self):
         return '~' if self._status == 1 else '.'
 
+# Объект палуба аналогичен точке, но имеет параметр видимости для реализации вражеского поля.
+# При попадании запускает метод проверки оставшихся палуб объекта корабль.
 class Deck(Dot):
     def __init__(self, x, y, shipname, visible):
         self.x = x
@@ -72,6 +73,8 @@ class Deck(Dot):
 
 
 class Ship:
+# При иничиализации объекта корабля происходит проверка возможности установки в заданные точки,
+# собственно создание точек и отметка прилегающих точек как занятых.
     def __init__(self, x, y, orient, size, field, visible):
         self.x = x
         self.y = y
@@ -102,6 +105,7 @@ class Ship:
                     self.field.occupy(i+di, j+dj)
                 except (BoardUsedException, IndexError) as e:
                     continue
+#Процедура оконтуривания уничтоженного корабля
     def contour(self):
         for b in [j.coord() for j in self.field.shipdict.get(self)]:
             i,j = b
@@ -141,6 +145,7 @@ class Field:
     @property
     def killcount(self):
         return self.kills
+# Проверка остатка живых палуб корабля, в случае отсутствия таковых запускаем оконтуривание точками.
     def checkship(self, shipname):
         _ = [i.status for i in self.shipdict.get(shipname)]
         if 1 in _:
@@ -149,16 +154,14 @@ class Field:
             print(f'Вы уничтожили корабль!')
             self.kills += 1
             shipname.contour()
+# Установка точек корабля на игровое поле
     def setdot(self, x, y, obj, shipname):
-        if self.sea[x,y].occ_state == 1:
-            raise WrongShipSetting()
+        self.sea[x, y] = obj
+        if self.shipdict.get(shipname):
+            self.shipdict[shipname].append(obj)
         else:
-            self.sea[x, y] = obj
-            if self.shipdict.get(shipname):
-                self.shipdict[shipname].append(obj)
-            else:
-                d1 = {shipname:[obj]}
-                self.shipdict.update(d1)
+            d1 = {shipname:[obj]}
+            self.shipdict.update(d1)
 
 class Player:
     def __init__(self, myfield, oppfield, boardsize = 6):
@@ -206,11 +209,9 @@ class Game():
         self.boardsize = boardsize
         self.humanboard = self.get_field()
         self.benderboard = self.get_field(0)
-
-
         self.bender = Bender(self.benderboard, self.humanboard)
         self.human = Human(self.humanboard, self.benderboard)
-
+# Создание случайного поля:
     def get_field(self, visible = 1):
         field = None
         while field is None:
@@ -245,9 +246,9 @@ class Game():
         turn = 0
         while True:
             print('~'*20)
-            print("               Доска игрока ")
+            print("Доска игрока")
             print(self.humanboard.display())
-            print("               Доска адмирала Бендера ")
+            print("Доска Адмирала Бендера")
             print(self.benderboard.display())
             if turn % 2 == 0:
                 print(' Ход игрока:')
