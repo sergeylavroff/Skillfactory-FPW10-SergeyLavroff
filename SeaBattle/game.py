@@ -102,8 +102,10 @@ class Ship:
             round = [(1,0),(-1,0),(1,1),(0,1),(0,-1),(-1,1),(-1,-1),(1,-1)]
             for di,dj in round:
                 try:
+                    if 0 > (i + di) or (i + di) >= self.field.boardsize or 0 > (j + dj) or (j + dj) >= self.field.boardsize:
+                        raise BoardUsedException
                     self.field.occupy(i+di, j+dj)
-                except (BoardUsedException, IndexError) as e:
+                except (BoardUsedException) as e:
                     continue
 #Процедура оконтуривания уничтоженного корабля
     def contour(self):
